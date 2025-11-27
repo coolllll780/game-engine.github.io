@@ -1,0 +1,42 @@
+body {
+  margin: 0;
+  font-family: monospace;
+  background: #0f0f0f;
+  color: white;
+}
+
+#toolbar {
+  background: #111;
+  padding: 10px;
+}
+
+#container {
+  display: flex;
+}
+
+#gameCanvas {
+  background: black;
+  border: 2px solid #444;
+}
+
+#editor {
+  width: 200px;
+  padding: 10px;
+  background: #151515;
+}
+
+.tile {
+  width: 40px;
+  height: 40px;
+  background: #333;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.tile.grass {
+  background: green;
+}
+
+.tile.wall {
+  background: gray;
+}
