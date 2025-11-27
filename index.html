@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Browser Game Engine</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="toolbar">
+  <button id="playBtn">▶ Play</button>
+  <button id="stopBtn">■ Stop</button>
+</div>
+
+<div id="container">
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+  <div id="editor">
+    <h3>Tiles</h3>
+    <div class="tile" data-id="0"></div>
+    <div class="tile grass" data-id="1"></div>
+    <div class="tile wall" data-id="2"></div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
