@@ -1,22 +1,200 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenBoard</title><style>
-*{box-sizing:border-box}body{margin:0;font:14px system-ui;background:#f6f7fb;color:#20283a}header{height:58px;background:white;border-bottom:1px solid #e5e8ef;display:flex;align-items:center;padding:0 16px;gap:12px}b{font-size:18px}.sp{flex:1}button{border:0;border-radius:8px;padding:9px 12px;background:#f0f2f8;cursor:pointer}.share{background:#586af5;color:white}#tools{position:absolute;top:72px;left:12px;background:white;padding:7px;border:1px solid #e5e8ef;border-radius:12px;display:grid;gap:5px;box-shadow:0 5px 25px #0001}.tool{width:40px;height:40px;font-size:17px} .active{background:#e9ecff;color:#4659ed}#bar{position:absolute;bottom:15px;left:50%;transform:translateX(-50%);background:white;border:1px solid #e5e8ef;border-radius:12px;padding:8px;display:flex;align-items:center;gap:10px}canvas{display:block;width:100vw;height:calc(100vh - 58px);touch-action:none}#status{color:#748096;font-size:12px}
-</style></head><body><header><b>✳ OpenBoard</b><span id="room" style="color:#8992a4;font-size:12px"></span><span class="sp"></span><span id="status">Connecting…</span><button class="share" id="share">↗ Share board</button></header><canvas id="c"></canvas><nav id="tools"><button class="tool active" data-t="pen">✎</button><button class="tool" data-t="highlighter">▰</button><button class="tool" data-t="eraser">▱</button><button class="tool" data-t="note">▤</button><button class="tool" data-t="text">T</button><button class="tool" data-t="rect">□</button><button class="tool" data-t="pan">✋</button><button id="clear" class="tool">⌫</button></nav><div id="bar">Colour <input id="color" type="color" value="#26334a"> Size <input id="size" type="range" min="1" max="25" value="4"><span id="zoom">100%</span><button id="reset">Reset view</button></div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>OpenBoard — shared canvas</title>
+<style>
+:root{color-scheme:light;--ink:#182235;--muted:#738096;--line:#e5eaf2;--panel:#fff;--accent:#6658e8;--accent2:#eeeaff;--bg:#f3f5fa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+button,input{font:inherit}button{cursor:pointer;border:0;color:inherit}button:focus-visible,input:focus-visible{outline:3px solid #aaa1ff;outline-offset:2px}
+.top{height:62px;background:#111827;color:white;display:flex;align-items:center;gap:14px;padding:0 20px;position:relative;z-index:5;box-shadow:0 3px 16px #10182820}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:-.4px}.logo{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#9b8cff,#6658e8);display:grid;place-items:center;font-size:19px}
+.room{color:#aab3c4;font-size:12px;border-left:1px solid #394254;padding-left:14px}.grow{flex:1}
+.connection{font-size:12px;color:#aab3c4;display:flex;align-items:center;gap:7px}.dot{width:8px;height:8px;border-radius:50%;background:#e7a83b}.dot.live{background:#3bd69b;box-shadow:0 0 0 3px #3bd69b20}
+.topbtn{padding:9px 13px;border-radius:9px;background:#293347;color:white;font-weight:650}.topbtn:hover{background:#36435b}.topbtn.primary{background:#7668f4;color:white}.topbtn.primary:hover{background:#6556e6}
+.stage{position:absolute;inset:62px 0 0;overflow:hidden}canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.panel{position:absolute;background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 8px 28px #18223512}
+.tools{left:16px;top:16px;padding:8px;display:flex;flex-direction:column;gap:5px;z-index:3}
+.tool{width:42px;height:42px;border-radius:10px;background:transparent;color:#59657a;font-size:19px;display:grid;place-items:center;position:relative}.tool:hover{background:#f2f3fa}.tool.active{background:var(--accent2);color:var(--accent)}.tool[title]:hover:after{content:attr(title);position:absolute;left:50px;white-space:nowrap;background:#20283a;color:white;font-size:11px;padding:5px 8px;border-radius:6px;z-index:10;pointer-events:none}
+.sep{height:1px;background:var(--line);margin:3px 4px}
+.properties{left:78px;top:16px;padding:13px 14px;width:204px;z-index:3}.prophead{font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:800;color:#9aa4b5;margin-bottom:11px}.label{display:flex;justify-content:space-between;align-items:center;color:#647087;font-size:12px;margin:11px 0 7px}.label output{color:#28344a;font-weight:700}.colors{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.swatch{width:22px;height:22px;border-radius:50%;border:2px solid white;box-shadow:0 0 0 1px #d8deea}.swatch.selected{box-shadow:0 0 0 2px var(--accent)}input[type=color]{width:100%;height:31px;border:0;padding:0;background:transparent;cursor:pointer}input[type=range]{width:100%;accent-color:var(--accent)}
+.bottom{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 11px;z-index:3;white-space:nowrap}.bottom button,.smallbtn{border-radius:8px;background:#f1f3f8;padding:8px 10px;color:#4e5a70}.bottom button:hover,.smallbtn:hover{background:#e8eaf2}.zoomval{font-size:12px;color:#647087;min-width:44px;text-align:center;font-variant-numeric:tabular-nums}.bottom .divider{height:24px;width:1px;background:var(--line);margin:0 3px}
+.hint{position:absolute;right:17px;bottom:18px;color:#929caf;font-size:11px;z-index:2;text-align:right;pointer-events:none}
+.menu{right:16px;top:16px;padding:7px;display:flex;gap:5px;z-index:3}.menu button{padding:9px 11px;border-radius:8px;background:#f2f3f8;color:#46536a;font-size:12px;font-weight:650}.menu button:hover{background:#e8eaf2}
+.toast{position:absolute;top:86px;left:50%;transform:translateX(-50%);background:#20283a;color:white;border-radius:9px;padding:10px 15px;box-shadow:0 8px 25px #0002;opacity:0;pointer-events:none;transition:opacity .2s;z-index:8}.toast.show{opacity:1}
+.modalback{position:absolute;inset:0;background:#11182766;display:none;place-items:center;z-index:10}.modalback.open{display:grid}.modal{width:min(390px,calc(100vw - 32px));background:white;border-radius:16px;padding:22px;box-shadow:0 20px 70px #0003}.modal h2{margin:0 0 7px;font-size:19px}.modal p{margin:0 0 16px;color:var(--muted);font-size:13px}.modal input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px;margin-bottom:13px}.modalactions{display:flex;justify-content:flex-end;gap:8px}.modalactions button{padding:9px 13px;border-radius:8px;background:#f1f3f8}.modalactions .primary{background:var(--accent);color:white}
+@media(max-width:720px){.top{padding:0 11px;gap:8px}.brand{font-size:15px}.room{display:none}.connection{font-size:0}.topbtn{padding:8px 9px;font-size:12px}.tools{left:8px;top:9px;padding:5px}.tool{width:37px;height:37px}.properties{left:58px;top:9px;width:156px;padding:10px}.colors{gap:5px}.swatch{width:18px;height:18px}.menu{right:8px;top:9px}.menu button{padding:8px;font-size:11px}.bottom{bottom:10px;gap:4px;padding:6px}.bottom button{padding:7px;font-size:11px}.hint{display:none}}
+@media(max-width:440px){.properties{display:none}.menu button[data-hide-mobile]{display:none}.brand span:last-child{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+ <div class="brand"><span class="logo">✳</span><span>OpenBoard</span></div>
+ <div class="room" id="roomLabel">ROOM / lobby</div><div class="grow"></div>
+ <div class="connection"><span class="dot" id="dot"></span><span id="status">Connecting…</span></div>
+ <button class="topbtn" id="roomBtn">＋ Room</button><button class="topbtn primary" id="share">↗ Share board</button>
+</header>
+<main class="stage" id="stage">
+ <canvas id="board" aria-label="Shared drawing canvas"></canvas>
+ <aside class="panel tools" aria-label="Drawing tools">
+  <button class="tool active" data-tool="pen" title="Pen (P)">✎</button>
+  <button class="tool" data-tool="marker" title="Marker (M)">▰</button>
+  <button class="tool" data-tool="highlighter" title="Highlighter (H)">▤</button>
+  <button class="tool" data-tool="eraser" title="Eraser (E)">▱</button>
+  <div class="sep"></div>
+  <button class="tool" data-tool="note" title="Sticky note (N)">▧</button>
+  <button class="tool" data-tool="text" title="Text (T)">T</button>
+  <div class="sep"></div>
+  <button class="tool" data-tool="rect" title="Rectangle (R)">□</button>
+  <button class="tool" data-tool="ellipse" title="Ellipse (O)">◯</button>
+  <button class="tool" data-tool="line" title="Line (L)">／</button>
+  <div class="sep"></div>
+  <button class="tool" data-tool="pan" title="Move canvas (Space)">✋</button>
+ </aside>
+ <aside class="panel properties">
+  <div class="prophead">Style</div>
+  <div class="label">Colour <span id="colorName">Ink</span></div>
+  <div class="colors" id="swatches">
+   <button class="swatch selected" data-color="#26334a" style="background:#26334a" title="Ink"></button>
+   <button class="swatch" data-color="#6658e8" style="background:#6658e8" title="Purple"></button>
+   <button class="swatch" data-color="#e34f68" style="background:#e34f68" title="Red"></button>
+   <button class="swatch" data-color="#ef963c" style="background:#ef963c" title="Orange"></button>
+   <button class="swatch" data-color="#28a879" style="background:#28a879" title="Green"></button>
+   <button class="swatch" data-color="#3185d8" style="background:#3185d8" title="Blue"></button>
+  </div>
+  <input id="color" type="color" value="#26334a" aria-label="Custom colour">
+  <div class="label"><span>Stroke size</span><output id="sizeOut">4 px</output></div>
+  <input id="size" type="range" min="1" max="32" value="4">
+  <div class="label"><span>Canvas</span><span id="bgLabel">Dot grid</span></div>
+  <button class="smallbtn" id="gridToggle" style="width:100%">Toggle grid</button>
+ </aside>
+ <nav class="panel menu">
+  <button id="exportPng">↓ PNG</button><button id="exportJson" data-hide-mobile>Backup</button><button id="importJson" data-hide-mobile>Import</button><button id="clear">Clear board</button>
+  <input id="fileInput" type="file" accept="application/json,.json" hidden>
+ </nav>
+ <div class="panel bottom">
+  <button id="zoomOut" aria-label="Zoom out">−</button><span class="zoomval" id="zoom">100%</span><button id="zoomIn" aria-label="Zoom in">＋</button>
+  <span class="divider"></span><button id="fit">Fit view</button><button id="reset">Center</button>
+ </div>
+ <div class="hint">Scroll to zoom · Space + drag to move · Everyone with the link can edit</div>
+ <div class="toast" id="toast"></div>
+ <div class="modalback" id="roomModal"><section class="modal"><h2>Start a new board</h2><p>Give your shared board a short room name. Anyone with the link can join.</p><input id="roomInput" maxlength="40" placeholder="e.g. science-project"><div class="modalactions"><button id="cancelRoom">Cancel</button><button class="primary" id="createRoom">Create room</button></div></section></div>
+</main>
 <script>
-(()=>{const c=document.querySelector('#c'),x=c.getContext('2d'),room=new URLSearchParams(location.search).get('room')||'lobby';document.querySelector('#room').textContent='ROOM / '+room;let items=[],tool='pen',scale=1,ox=0,oy=0,down=false,pan=false,space=false,start,pts=[],cur,s;
-const color=document.querySelector('#color'),size=document.querySelector('#size');
-function resize(){let d=devicePixelRatio||1;c.width=c.clientWidth*d;c.height=c.clientHeight*d;x.setTransform(d,0,0,d,0,0);draw()}new ResizeObserver(resize).observe(c);
-function world(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left-ox)/scale,y:(e.clientY-r.top-oy)/scale}}
-function draw(){let w=c.clientWidth,h=c.clientHeight;x.setTransform(devicePixelRatio||1,0,0,devicePixelRatio||1,0,0);x.clearRect(0,0,w,h);x.fillStyle='#f7f8fc';x.fillRect(0,0,w,h);let gap=24*scale,gx=((ox%gap)+gap)%gap,gy=((oy%gap)+gap)%gap;x.fillStyle='#e5e8f0';for(let a=gx;a<w;a+=gap)for(let b=gy;b<h;b+=gap){x.beginPath();x.arc(a,b,.8,0,7);x.fill()}x.save();x.translate(ox,oy);x.scale(scale,scale);[...items,...(cur?[cur]:[])].forEach(it=>{x.save();if(it.type==='stroke'){x.globalCompositeOperation=it.tool==='eraser'?'destination-out':'source-over';x.globalAlpha=it.tool==='highlighter'?.23:1;x.strokeStyle=it.color;x.fillStyle=it.color;x.lineWidth=it.width*(it.tool==='highlighter'?3:1);x.lineCap='round';x.lineJoin='round';x.beginPath();(it.points||[]).forEach((p,i)=>i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y));x.stroke()}if(it.type==='note'){x.fillStyle='#fff1a6';x.fillRect(it.x,it.y,180,110);x.fillStyle='#51451b';x.font='15px system-ui';x.fillText(it.text,it.x+12,it.y+25,155)}if(it.type==='text'){x.fillStyle=it.color;x.font='22px system-ui';x.fillText(it.text,it.x,it.y)}if(it.type==='shape'){x.strokeStyle=it.color;x.lineWidth=it.width;x.strokeRect(it.x,it.y,it.w,it.h)}x.restore()});x.restore();document.querySelector('#zoom').textContent=Math.round(scale*100)+'%'}
-function send(a){if(s?.readyState===1)s.send(JSON.stringify(a))}function add(a){items.push(a);draw()}
-function connect(){s=new WebSocket('wss://openboard.joel-robinson.workers.dev/ws/'+room);s.onopen=()=>document.querySelector('#status').textContent='● Live';s.onclose=()=>{document.querySelector('#status').textContent='Reconnecting…';setTimeout(connect,1500)};s.onmessage=e=>{let a=JSON.parse(e.data);if(a.type==='init')items=a.items||[];else if(a.type==='clear')items=[];else items.push(a);draw()}}connect();
-document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tool=b.dataset.t;document.querySelectorAll('[data-t]').forEach(z=>z.classList.toggle('active',z===b))});
-c.onpointerdown=e=>{c.setPointerCapture(e.pointerId);let p=world(e);if(tool==='pan'||space){pan=true;start={x:e.clientX,y:e.clientY,ox,oy};return}if(tool==='note'||tool==='text'){let text=prompt(tool==='note'?'Sticky note:':'Text:');if(text){let a={type:tool,x:p.x,y:p.y,text,color:color.value};add(a);send(a)}return}down=true;pts=[p];cur=tool==='rect'?{type:'shape',x:p.x,y:p.y,w:0,h:0,color:color.value,width:+size.value}:{type:'stroke',tool,color:color.value,width:+size.value,points:pts};draw()};
-c.onpointermove=e=>{if(pan){ox=start.ox+e.clientX-start.x;oy=start.oy+e.clientY-start.y;draw();return}if(!down)return;let p=world(e);if(tool==='rect'){cur.w=p.x-pts[0].x;cur.h=p.y-pts[0].y}else{pts.push(p);cur.points=pts}draw()};
-function end(){if(pan)pan=false;if(down){down=false;if(cur){if(cur.type!=='shape'||(Math.abs(cur.w)>2&&Math.abs(cur.h)>2)){if(cur.type==='shape'){if(cur.w<0){cur.x+=cur.w;cur.w=-cur.w}if(cur.h<0){cur.y+=cur.h;cur.h=-cur.h}}add(cur);send(cur)}}cur=null;pts=[];draw()}}c.onpointerup=end;c.onpointercancel=end;
-c.onwheel=e=>{e.preventDefault();let r=c.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,old=scale;scale=Math.max(.2,Math.min(4,scale*(e.deltaY<0?1.1:.9)));ox=mx-(mx-ox)*scale/old;oy=my-(my-oy)*scale/old;draw()};
-document.onkeydown=e=>{if(e.code==='Space'){space=true;e.preventDefault()}};document.onkeyup=e=>{if(e.code==='Space')space=false};
-document.querySelector('#share').onclick=()=>navigator.clipboard.writeText(location.origin+location.pathname+'?room='+room).then(()=>alert('Link copied! Anyone with this link can edit.'));
-document.querySelector('#clear').onclick=()=>{if(confirm('Clear this board for everyone?')){items=[];draw();send({type:'clear'})}};
-document.querySelector('#reset').onclick=()=>{scale=1;ox=oy=0;draw()};
+(()=>{
+const canvas=document.querySelector('#board'),ctx=canvas.getContext('2d'),stage=document.querySelector('#stage');
+const $=id=>document.getElementById(id);
+const params=new URLSearchParams(location.search);let room=params.get('room')||'lobby';
+let items=[],tool='pen',scale=1,ox=0,oy=0,down=false,panning=false,space=false,start=null,points=[],current=null,socket=null,retry=0,grid=true;
+let seen=new Set(),color=$('color').value;
+const paletteNames={'#26334a':'Ink','#6658e8':'Purple','#e34f68':'Red','#ef963c':'Orange','#28a879':'Green','#3185d8':'Blue'};
+$('roomLabel').textContent='ROOM / '+room;
+function toast(message){const t=$('toast');t.textContent=message;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2200)}
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function resize(){const d=window.devicePixelRatio||1;canvas.width=Math.round(canvas.clientWidth*d);canvas.height=Math.round(canvas.clientHeight*d);draw()}
+new ResizeObserver(resize).observe(canvas);
+function world(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left-ox)/scale,y:(e.clientY-r.top-oy)/scale}}
+function screenPoint(p){return{x:p.x*scale+ox,y:p.y*scale+oy}}
+function drawItem(it){
+ ctx.save();
+ if(it.type==='stroke'){
+  ctx.globalCompositeOperation=it.tool==='eraser'?'destination-out':'source-over';
+  ctx.globalAlpha=it.tool==='highlighter'?.2:1;
+  ctx.strokeStyle=it.color||'#26334a';ctx.fillStyle=it.color||'#26334a';
+  ctx.lineWidth=(it.width||4)*(it.tool==='highlighter'?3.5:it.tool==='marker'?2.2:1);
+  ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
+  (it.points||[]).forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+  if((it.points||[]).length===1){ctx.arc(it.points[0].x,it.points[0].y,ctx.lineWidth/2,0,Math.PI*2);ctx.fill()}else ctx.stroke();
+ }else if(it.type==='note'){
+  ctx.shadowColor='#27324a18';ctx.shadowBlur=9;ctx.shadowOffsetY=3;ctx.fillStyle=it.noteColor||'#fff1a6';ctx.fillRect(it.x,it.y,190,126);ctx.shadowColor='transparent';
+  ctx.fillStyle='#51451b';ctx.font='bold 11px system-ui';ctx.fillText('STICKY NOTE',it.x+13,it.y+19);
+  ctx.font='14px system-ui';wrapText(ctx,it.text||'',it.x+13,it.y+43,164,19);
+ }else if(it.type==='text'){
+  ctx.fillStyle=it.color||'#26334a';ctx.font=(it.fontSize||24)+'px system-ui';ctx.fillText(it.text||'',it.x,it.y);
+ }else if(it.type==='shape'){
+  ctx.strokeStyle=it.color||'#26334a';ctx.lineWidth=it.width||4;ctx.lineCap='round';ctx.beginPath();
+  if(it.shapeKind==='ellipse'){ctx.ellipse(it.x+it.w/2,it.y+it.h/2,Math.abs(it.w/2),Math.abs(it.h/2),0,0,Math.PI*2);ctx.stroke()}
+  else if(it.shapeKind==='line'){ctx.moveTo(it.x,it.y);ctx.lineTo(it.x+it.w,it.y+it.h);ctx.stroke()}
+  else ctx.strokeRect(it.x,it.y,it.w,it.h);
+ }
+ ctx.restore();
+}
+function wrapText(c,text,x,y,maxWidth,lineHeight){const words=text.split(/\s+/);let line='';for(const word of words){const test=line?line+' '+word:word;if(c.measureText(test).width>maxWidth&&line){c.fillText(line,x,y);line=word;y+=lineHeight}else line=test}if(line)c.fillText(line,x,y)}
+function draw(){
+ const d=window.devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#f7f8fc';ctx.fillRect(0,0,w,h);
+ if(grid){const gap=26*scale;if(gap>7){const gx=((ox%gap)+gap)%gap,gy=((oy%gap)+gap)%gap;ctx.fillStyle='#dfe4ee';for(let x=gx;x<w;x+=gap)for(let y=gy;y<h;y+=gap){ctx.beginPath();ctx.arc(x,y,Math.max(.65,scale*.75),0,Math.PI*2);ctx.fill()}}}
+ ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);items.forEach(drawItem);if(current)drawItem(current);ctx.restore();$('zoom').textContent=Math.round(scale*100)+'%';$('bgLabel').textContent=grid?'Dot grid':'Plain';
+}
+function send(data){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(data))}
+function addLocal(item){if(item.id&&seen.has(item.id))return;items.push(item);if(item.id)seen.add(item.id);draw()}
+function connect(){
+ const url='wss://openboard.joel-robinson.workers.dev/ws/'+encodeURIComponent(room);
+ try{socket=new WebSocket(url)}catch(e){setStatus(false,'Offline');return}
+ socket.onopen=()=>{retry=0;setStatus(true,'Live · shared')};
+ socket.onmessage=e=>{let d;try{d=JSON.parse(e.data)}catch{return}
+  if(d.type==='init'){items=d.items||[];seen=new Set(items.map(i=>i.id).filter(Boolean));draw();return}
+  if(d.type==='clear'){items=[];seen.clear();draw();return}
+  addLocal(d);
+ };
+ socket.onclose=()=>{setStatus(false,'Reconnecting…');const delay=Math.min(10000,800*Math.pow(1.7,retry++));setTimeout(connect,delay)};
+ socket.onerror=()=>setStatus(false,'Connection issue');
+}
+function setStatus(live,label){$('status').textContent=label;$('dot').classList.toggle('live',live)}
+connect();
+function commit(item){item.id=item.id||uid();addLocal(item);send(item)}
+function selectTool(next){tool=next;document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===next));canvas.style.cursor=next==='pan'?'grab':next==='text'||next==='note'?'text':'crosshair'}
+document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>selectTool(b.dataset.tool)));
+$('swatches').addEventListener('click',e=>{const b=e.target.closest('[data-color]');if(!b)return;color=b.dataset.color;$('color').value=color;$('colorName').textContent=paletteNames[color]||'Custom';document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('selected',s===b))});
+$('color').addEventListener('input',e=>{color=e.target.value;$('colorName').textContent=paletteNames[color]||'Custom';document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('selected',s.dataset.color===color))});
+$('size').addEventListener('input',e=>$('sizeOut').textContent=e.target.value+' px');
+$('gridToggle').onclick=()=>{grid=!grid;draw()};
+canvas.addEventListener('pointerdown',e=>{
+ canvas.setPointerCapture(e.pointerId);const p=world(e);
+ if(tool==='pan'||space){panning=true;start={x:e.clientX,y:e.clientY,ox,oy};canvas.style.cursor='grabbing';return}
+ if(tool==='note'||tool==='text'){
+  const text=prompt(tool==='note'?'Write your sticky note:':'Enter your text:');if(text&&text.trim()){if(tool==='note')commit({type:'note',x:p.x,y:p.y,text:text.trim()});else commit({type:'text',x:p.x,y:p.y,text:text.trim(),color,fontSize:24})}return;
+ }
+ down=true;points=[p];
+ if(['rect','ellipse','line'].includes(tool))current={type:'shape',shapeKind:tool==='rect'?'rect':tool,x:p.x,y:p.y,w:0,h:0,color,width:+$('size').value};
+ else current={type:'stroke',tool,color,width:+$('size').value,points};
+ draw();
+});
+canvas.addEventListener('pointermove',e=>{
+ if(panning){ox=start.ox+e.clientX-start.x;oy=start.oy+e.clientY-start.y;draw();return}
+ if(!down)return;const p=world(e);
+ if(current.type==='shape'){current.w=p.x-points[0].x;current.h=p.y-points[0].y}
+ else{points.push(p);current.points=points}
+ draw();
+});
+function finish(){if(panning){panning=false;canvas.style.cursor=tool==='pan'?'grab':'crosshair'}if(!down)return;down=false;if(current){if(current.type!=='shape'||Math.abs(current.w)>2||Math.abs(current.h)>2){if(current.type==='shape'&&current.shapeKind!=='line'){if(current.w<0){current.x+=current.w;current.w=-current.w}if(current.h<0){current.y+=current.h;current.h=-current.h}}commit(current)}}current=null;points=[];draw()}
+canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);
+canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,old=scale;scale=Math.max(.15,Math.min(5,scale*(e.deltaY<0?1.1:.9)));ox=mx-(mx-ox)*scale/old;oy=my-(my-oy)*scale/old;draw()},{passive:false});
+function zoomAt(f){const mx=canvas.clientWidth/2,my=canvas.clientHeight/2,old=scale;scale=Math.max(.15,Math.min(5,scale*f));ox=mx-(mx-ox)*scale/old;oy=my-(my-oy)*scale/old;draw()}
+$('zoomIn').onclick=()=>zoomAt(1.2);$('zoomOut').onclick=()=>zoomAt(1/1.2);
+$('reset').onclick=()=>{scale=1;ox=oy=0;draw()};
+$('fit').onclick=()=>{if(!items.length){scale=1;ox=oy=0;draw();return}let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;items.forEach(i=>{const x=i.x||0,y=i.y||0,w=i.w||0,h=i.h||0;minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x+w);maxY=Math.max(maxY,y+h);(i.points||[]).forEach(p=>{minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y)})});const pad=90;scale=Math.max(.15,Math.min(2,Math.min((canvas.clientWidth-pad*2)/Math.max(1,maxX-minX),(canvas.clientHeight-pad*2)/Math.max(1,maxY-minY))));ox=(canvas.clientWidth-(minX+maxX)*scale)/2;oy=(canvas.clientHeight-(minY+maxY)*scale)/2;draw()};
+$('share').onclick=async()=>{const url=location.origin+location.pathname+'?room='+encodeURIComponent(room);try{await navigator.clipboard.writeText(url);toast('Board link copied — send it to your group!')}catch{prompt('Copy this board link:',url)}};
+$('roomBtn').onclick=()=>{$('roomModal').classList.add('open');$('roomInput').value=''};
+$('cancelRoom').onclick=()=>$('roomModal').classList.remove('open');
+$('createRoom').onclick=()=>{const name=$('roomInput').value.toLowerCase().trim().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);if(name.length<3){toast('Room name needs at least 3 characters');return}location.href=location.pathname+'?room='+encodeURIComponent(name)};
+$('clear').onclick=()=>{if(confirm('Clear this board for everyone in the room? This affects all collaborators.')){items=[];seen.clear();draw();send({type:'clear'})}};
+$('exportPng').onclick=()=>{const d=window.devicePixelRatio||1;const out=document.createElement('canvas');out.width=canvas.width;out.height=canvas.height;const o=out.getContext('2d');o.fillStyle='#fff';o.fillRect(0,0,out.width,out.height);o.drawImage(canvas,0,0);const a=document.createElement('a');a.download='openboard-'+room+'.png';a.href=out.toDataURL('image/png');a.click();toast('PNG exported')};
+$('exportJson').onclick=()=>{const blob=new Blob([JSON.stringify({app:'OpenBoard',version:1,room,items},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='openboard-'+room+'-backup.json';a.click();URL.revokeObjectURL(a.href);toast('Board backup exported')};
+$('importJson').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.items)||data.items.length>8000)throw Error();if(!confirm('Import '+data.items.length+' objects into this shared board?'))return;data.items.forEach(i=>{if(['stroke','note','text','shape'].includes(i.type))commit({...i,id:uid()})});toast('Board imported')}catch{toast('That backup file could not be read')}e.target.value=''};
+document.addEventListener('keydown',e=>{
+ if(e.target.matches('input,textarea'))return;
+ if(e.code==='Space'){space=true;e.preventDefault();return}
+ if(e.ctrlKey||e.metaKey){if(e.key.toLowerCase()==='s'){e.preventDefault();$('exportJson').click()}return}
+ const keys={p:'pen',m:'marker',h:'highlighter',e:'eraser',n:'note',t:'text',r:'rect',o:'ellipse',l:'line'};
+ if(keys[e.key.toLowerCase()])selectTool(keys[e.key.toLowerCase()]);
+ if(e.key==='Escape'){$('roomModal').classList.remove('open');selectTool('pen')}
+});
+document.addEventListener('keyup',e=>{if(e.code==='Space')space=false});
+window.addEventListener('resize',resize);
 })();
-</script></body></html>
+</script>
+</body>
+</html>
