@@ -27,6 +27,31 @@ button,input{font:inherit}button{cursor:pointer;border:0;color:inherit}button:fo
 .modalback{position:absolute;inset:0;background:#11182766;display:none;place-items:center;z-index:10}.modalback.open{display:grid}.modal{width:min(390px,calc(100vw - 32px));background:white;border-radius:16px;padding:22px;box-shadow:0 20px 70px #0003}.modal h2{margin:0 0 7px;font-size:19px}.modal p{margin:0 0 16px;color:var(--muted);font-size:13px}.modal input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px;margin-bottom:13px}.modalactions{display:flex;justify-content:flex-end;gap:8px}.modalactions button{padding:9px 13px;border-radius:8px;background:#f1f3f8}.modalactions .primary{background:var(--accent);color:white}
 @media(max-width:720px){.top{padding:0 11px;gap:8px}.brand{font-size:15px}.room{display:none}.connection{font-size:0}.topbtn{padding:8px 9px;font-size:12px}.tools{left:8px;top:9px;padding:5px}.tool{width:37px;height:37px}.properties{left:58px;top:9px;width:156px;padding:10px}.colors{gap:5px}.swatch{width:18px;height:18px}.menu{right:8px;top:9px}.menu button{padding:8px;font-size:11px}.bottom{bottom:10px;gap:4px;padding:6px}.bottom button{padding:7px;font-size:11px}.hint{display:none}}
 @media(max-width:440px){.properties{display:none}.menu button[data-hide-mobile]{display:none}.brand span:last-child{display:none}}
+
+/* Multiplayer panels */
+.topbtn.extra{background:#293347;color:#e8eaff}.topbtn.extra:hover{background:#3b4660}
+.sidepanel{position:absolute;z-index:6;right:16px;top:70px;width:310px;background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 15px 45px #18223522;display:none;overflow:hidden}
+.sidepanel.open{display:flex;flex-direction:column}
+.sidehead{display:flex;align-items:center;gap:9px;padding:13px 15px;border-bottom:1px solid var(--line);font-weight:800}
+.sidehead small{margin-left:auto;color:#8490a4;font-size:11px;font-weight:500}
+.closepanel{background:#f1f3f8;border-radius:7px;padding:5px 8px;color:#657087}
+.chatmessages{height:300px;max-height:calc(100vh - 300px);min-height:150px;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.chatmsg{background:#f3f4fa;border-radius:11px;padding:8px 10px;max-width:95%;overflow-wrap:anywhere}
+.chatmsg.mine{background:#eeeaff;align-self:flex-end}
+.chatmeta{display:flex;gap:8px;align-items:center;font-size:10px;color:#8490a4;margin-bottom:3px}.chatmeta b{color:#505d73;font-size:11px}
+.chattext{font-size:13px;white-space:pre-wrap}
+.chatform{padding:10px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:7px}
+.chatform input{min-width:0;border:1px solid var(--line);border-radius:8px;padding:9px;font-size:12px}
+.chatform input[name=nickname]{grid-column:1/-1}
+.chatform button{background:var(--accent);color:white;border-radius:8px;padding:8px 12px;font-weight:700}
+.gamepanel{width:270px;padding-bottom:12px}
+.gameintro{padding:11px 14px 4px;color:#778399;font-size:12px}
+.gamestatus{margin:8px 14px 12px;padding:9px;background:#f4f5fa;border-radius:9px;font-size:12px;text-align:center;color:#59657a}
+.gamegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 14px}
+.gamecell{aspect-ratio:1;border-radius:10px;background:#f1f2f8;color:#6658e8;font-size:32px;font-weight:800;display:grid;place-items:center}
+.gamecell:disabled{cursor:default;opacity:1}.gamecell:not(:disabled):hover{background:#e9e6ff}
+.gameactions{display:flex;gap:8px;padding:12px 14px 0}.gameactions button{flex:1;background:#f0f2f8;border-radius:8px;padding:8px;color:#59657a;font-size:12px}
+@media(max-width:720px){.sidepanel{right:8px;top:62px;width:min(310px,calc(100vw - 16px))}.chatmessages{max-height:calc(100vh - 270px)}}
 </style>
 </head>
 <body>
@@ -34,10 +59,22 @@ button,input{font:inherit}button{cursor:pointer;border:0;color:inherit}button:fo
  <div class="brand"><span class="logo">✳</span><span>OpenBoard</span></div>
  <div class="room" id="roomLabel">ROOM / lobby</div><div class="grow"></div>
  <div class="connection"><span class="dot" id="dot"></span><span id="status">Connecting…</span></div>
- <button class="topbtn" id="roomBtn">＋ Room</button><button class="topbtn primary" id="share">↗ Share board</button>
+ <button class="topbtn extra" id="chatToggle">Chat</button><button class="topbtn extra" id="gameToggle">Games</button><button class="topbtn" id="roomBtn">＋ Room</button><button class="topbtn primary" id="share">↗ Share board</button>
 </header>
 <main class="stage" id="stage">
  <canvas id="board" aria-label="Shared drawing canvas"></canvas>
+ <section class="sidepanel" id="chatPanel" aria-label="Room chat">
+  <div class="sidehead">💬 Room chat <small id="chatCount">0 messages</small><button class="closepanel" id="closeChat">✕</button></div>
+  <div class="chatmessages" id="chatMessages"><div style="color:#9aa4b5;text-align:center;font-size:12px;margin:auto">Messages from this room appear here.</div></div>
+  <form class="chatform" id="chatForm"><input name="nickname" id="nickname" maxlength="24" placeholder="Your nickname" aria-label="Your nickname"><input name="message" id="chatInput" maxlength="500" placeholder="Message everyone…" autocomplete="off" required><button type="submit">Send</button></form>
+ </section>
+ <section class="sidepanel gamepanel" id="gamePanel" aria-label="Multiplayer games">
+  <div class="sidehead">🎮 Tic-Tac-Toe <small>2 players</small><button class="closepanel" id="closeGame">✕</button></div>
+  <div class="gameintro">Play someone else in this room. Your moves sync live.</div>
+  <div class="gamestatus" id="gameStatus">Joining game…</div>
+  <div class="gamegrid" id="gameGrid"><button class="gamecell" data-cell="0" aria-label="Square 1"></button><button class="gamecell" data-cell="1" aria-label="Square 2"></button><button class="gamecell" data-cell="2" aria-label="Square 3"></button><button class="gamecell" data-cell="3" aria-label="Square 4"></button><button class="gamecell" data-cell="4" aria-label="Square 5"></button><button class="gamecell" data-cell="5" aria-label="Square 6"></button><button class="gamecell" data-cell="6" aria-label="Square 7"></button><button class="gamecell" data-cell="7" aria-label="Square 8"></button><button class="gamecell" data-cell="8" aria-label="Square 9"></button></div>
+  <div class="gameactions"><button id="joinGame">Join / rejoin</button><button id="resetGame">New round</button></div>
+ </section>
  <aside class="panel tools" aria-label="Drawing tools">
   <button class="tool active" data-tool="pen" title="Pen (P)">✎</button>
   <button class="tool" data-tool="marker" title="Marker (M)">▰</button>
@@ -129,10 +166,41 @@ function draw(){
 }
 function send(data){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(data))}
 function addLocal(item){if(item.id&&seen.has(item.id))return;items.push(item);if(item.id)seen.add(item.id);draw()}
+
+const playerId=sessionStorage.getItem('openboard-player')||uid();
+sessionStorage.setItem('openboard-player',playerId);
+const playerName=sessionStorage.getItem('openboard-name')||('Guest '+Math.floor(100+Math.random()*900));
+let chatEntries=[],gameState={board:Array(9).fill(''),turn:'X',winner:null,players:{},names:{}};
+let myMark=null;
+$('nickname').value=playerName;
+function renderChat(){
+ const box=$('chatMessages');box.replaceChildren();
+ if(!chatEntries.length){const empty=document.createElement('div');empty.textContent='No messages yet. Say hello!';empty.style.cssText='color:#9aa4b5;text-align:center;font-size:12px;margin:auto';box.append(empty)}
+ chatEntries.slice(-100).forEach(entry=>{const row=document.createElement('div');row.className='chatmsg'+(entry.name===$('nickname').value?' mine':'');const meta=document.createElement('div');meta.className='chatmeta';const name=document.createElement('b');name.textContent=entry.name;const time=document.createElement('span');time.textContent=new Date(entry.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});meta.append(name,time);const body=document.createElement('div');body.className='chattext';body.textContent=entry.message;row.append(meta,body);box.append(row)});
+ box.scrollTop=box.scrollHeight;$('chatCount').textContent=chatEntries.length+' messages';
+}
+function renderGame(){
+ const players=gameState.players||{},names=gameState.names||{};myMark=players[playerId]||null;
+ const count=Object.keys(players).length,opponent=Object.entries(players).find(([id])=>id!==playerId);
+ let label=!myMark?(count>=2?'Game full · spectating':'Tap Join / rejoin to play'):gameState.winner?(gameState.winner==='draw'?'It’s a draw!':gameState.winner===myMark?'You won! 🎉':'You lost this round'):gameState.turn===myMark?'Your turn ('+myMark+')':'Waiting for '+(gameState.turn||'X')+'…';
+ $('gameStatus').textContent=label+(opponent?' · '+(names[opponent[0]]||'Opponent')+' is '+players[opponent[0]]:'');
+ document.querySelectorAll('.gamecell').forEach((b,i)=>{b.textContent=gameState.board?.[i]||'';b.disabled=!myMark||!!gameState.winner||gameState.turn!==myMark||!!gameState.board?.[i]});
+}
+function joinGame(){if(socket?.readyState===WebSocket.OPEN)send({type:'gameJoin',playerId,name:$('nickname').value.trim().slice(0,24)||playerName})}
+$('chatToggle').onclick=()=>{$('chatPanel').classList.toggle('open');$('gamePanel').classList.remove('open');$('chatMessages').scrollTop=$('chatMessages').scrollHeight};
+$('gameToggle').onclick=()=>{$('gamePanel').classList.toggle('open');$('chatPanel').classList.remove('open');joinGame();renderGame()};
+$('closeChat').onclick=()=>$('chatPanel').classList.remove('open');
+$('closeGame').onclick=()=>$('gamePanel').classList.remove('open');
+$('nickname').addEventListener('change',()=>{const n=$('nickname').value.trim().slice(0,24)||playerName;$('nickname').value=n;sessionStorage.setItem('openboard-name',n);renderChat();joinGame()});
+$('chatForm').addEventListener('submit',e=>{e.preventDefault();const message=$('chatInput').value.trim();if(!message)return;if(socket?.readyState!==WebSocket.OPEN){toast('Chat is reconnecting — try again in a moment');return}send({type:'chat',name:$('nickname').value.trim().slice(0,24)||playerName,message});$('chatInput').value=''});
+$('joinGame').onclick=joinGame;
+document.querySelectorAll('.gamecell').forEach(b=>b.onclick=()=>{if(myMark&&gameState.turn===myMark&&!gameState.winner&&!gameState.board[+b.dataset.cell])send({type:'gameMove',playerId,cell:+b.dataset.cell})});
+$('resetGame').onclick=()=>{if(confirm('Start a new round for everyone in this room?'))send({type:'gameReset'})};
+
 function connect(){
  const url='wss://openboard.joel-robinson.workers.dev/ws/'+encodeURIComponent(room);
  try{socket=new WebSocket(url)}catch(e){setStatus(false,'Offline');return}
- socket.onopen=()=>{retry=0;setStatus(true,'Live · shared')};
+ socket.onopen=()=>{retry=0;setStatus(true,'Live · shared');joinGame()};
  socket.onmessage=e=>{let d;try{d=JSON.parse(e.data)}catch{return}
   if(d.type==='init'){items=d.items||[];seen=new Set(items.map(i=>i.id).filter(Boolean));draw();return}
   if(d.type==='clear'){items=[];seen.clear();draw();return}
